@@ -47,3 +47,59 @@ Since AWS native S3 replication does not support replication to a specific prefi
     }
   ]
 }
+```
+### 2. Configure Destination Bucket Policy (Destination Account)
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowLambdaPutObject",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::<SOURCE_ACCOUNT_ID>:role/<LAMBDA_EXECUTION_ROLE>"
+      },
+      "Action": [
+        "s3:PutObject",
+        "s3:PutObjectAcl"
+      ],
+      "Resource": "arn:aws:s3:::<DESTINATION_BUCKET>/*"
+    }
+  ]
+}
+```
+### 3 Deploy Lambda Function
+- Set the following environment variable in the Lambda function
+| Variab              | Value                                         |
+|---------------------|-----------------------------------------------------|
+| DESTINATION_BUCKET    | <DESTINATION_BUCKET>  |
+| DESTINATION_REGION  | (destination bucket region) |
+| DESTINATION_PREFIX    | <DESTINATION_PREFIX>      |
+| PREFIX_FILTER       | (optional, e.g., folder1/)       |
+- Ensure Lambda execution role is set to <LAMBDA_EXECUTION_ROLE>.
+- Deploy the latest Lambda code that lists source objects and copies recent files based on the prefix filter.
+
+### 4. Create EventBridge Rule
+- Schedule Lambda Invocation (e.g., event hour)
+  - Go to EventBridge → Rules → Create rule → Schedule → Fixed rate or Cron.
+  - Set the target as the Lambda Function <LAMBDA_FUNCTION_NAME>.
+- Add permission to Lambda for EventBridge invocation if required:
+```bash
+  aws lambda add-permission \
+  --function-name <LAMBDA_FUNCTION_NAME> \
+  --statement-id eventbridge-invoke \
+  --action lambda:InvokeFunction \
+  --principal events.amazonaws.com \
+  --source-arn arn:aws:events:<REGION>:<SOURCE_ACCOUNT_ID>:rule/<RULE_NAME>
+```
+### 5 Testing and Verivication
+### 6 Maintenance
+
+```pgsql
+
+---
+
+Just replace the placeholders (e.g., `<SOURCE_ACCOUNT_ID>`, `<DESTINATION_BUCKET>`, etc.) with your actual values only in your secure internal copy, never commit real sensitive data to public repos.  
+
+If you want, I can also help you add a `.gitignore` or additional security tips for managing sensitive info in GitHub.
+```
